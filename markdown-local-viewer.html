@@ -1,0 +1,1247 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="color-scheme" content="light">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'unsafe-inline'; script-src 'unsafe-inline'; img-src data: https: http:; base-uri 'none'; form-action 'none'">
+  <title>Markdown ローカルHTMLビューア</title>
+  <style>
+    :root {
+      --app-blue: #1976D2;
+      --app-blue-strong: #0D5EAB;
+      --app-text: #222222;
+      --app-sub: #666666;
+      --app-border: #E0E0E0;
+      --app-page: #F4F6F9;
+      --app-surface: #FFFFFF;
+      --app-soft: #FAFBFD;
+      --app-shadow: 0 8px 28px rgba(22, 39, 59, 0.08);
+      --app-font: -apple-system, BlinkMacSystemFont, "Segoe UI", "Hiragino Kaku Gothic ProN", "Hiragino Sans", "Yu Gothic UI", "Yu Gothic", Meiryo, sans-serif;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      background: var(--app-page);
+      color: var(--app-text);
+      font-family: var(--app-font);
+      font-size: 15px;
+      line-height: 1.7;
+    }
+
+    .app-shell {
+      width: min(1180px, calc(100% - 32px));
+      margin: 28px auto 40px;
+    }
+
+    .app-header {
+      margin-bottom: 18px;
+    }
+
+    .app-header h1 {
+      margin: 0 0 4px;
+      font-size: 1.38rem;
+      line-height: 1.4;
+      letter-spacing: 0.01em;
+    }
+
+    .app-header p {
+      margin: 0;
+      color: var(--app-sub);
+      font-size: 0.9rem;
+    }
+
+    .control-panel {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) auto;
+      align-items: end;
+      gap: 18px;
+      padding: 22px 24px;
+      border: 1px solid var(--app-border);
+      border-radius: 9px;
+      background: var(--app-surface);
+      box-shadow: var(--app-shadow);
+    }
+
+    .file-area {
+      min-width: 0;
+    }
+
+    .field-label {
+      display: block;
+      margin-bottom: 8px;
+      color: var(--app-text);
+      font-size: 0.78rem;
+      font-weight: 700;
+      letter-spacing: 0.06em;
+    }
+
+    input[type="file"] {
+      display: block;
+      width: 100%;
+      padding: 9px 10px;
+      border: 1px solid var(--app-border);
+      border-radius: 5px;
+      background: var(--app-soft);
+      color: var(--app-text);
+      font-family: inherit;
+      font-size: 0.9rem;
+    }
+
+    .file-status {
+      min-height: 1.5em;
+      margin: 8px 0 0;
+      color: var(--app-sub);
+      font-size: 0.82rem;
+    }
+
+    .control-options {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 12px 16px;
+    }
+
+    .checkbox-control {
+      display: inline-flex;
+      align-items: center;
+      gap: 7px;
+      color: var(--app-text);
+      font-size: 0.88rem;
+      white-space: nowrap;
+      cursor: pointer;
+    }
+
+    .checkbox-control input {
+      width: 1em;
+      height: 1em;
+      margin: 0;
+      accent-color: var(--app-blue);
+    }
+
+    .button-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      justify-content: flex-end;
+    }
+
+    button {
+      appearance: none;
+      min-height: 38px;
+      padding: 8px 13px;
+      border: 1px solid var(--app-blue);
+      border-radius: 5px;
+      background: var(--app-blue);
+      color: #FFF;
+      font: inherit;
+      font-size: 0.86rem;
+      font-weight: 700;
+      cursor: pointer;
+    }
+
+    button:hover { background: var(--app-blue-strong); border-color: var(--app-blue-strong); }
+    button.secondary { background: #FFF; color: var(--app-blue-strong); }
+    button.secondary:hover { background: #F4F8FC; }
+    button:disabled { cursor: not-allowed; opacity: 0.46; }
+
+    .local-note {
+      margin: 15px 2px 0;
+      color: var(--app-sub);
+      font-size: 0.82rem;
+    }
+
+    .preview-panel {
+      margin-top: 22px;
+      overflow: hidden;
+      border: 1px solid var(--app-border);
+      border-radius: 9px;
+      background: #FFF;
+      box-shadow: var(--app-shadow);
+    }
+
+    .preview-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+      padding: 11px 16px;
+      border-bottom: 1px solid var(--app-border);
+      background: var(--app-soft);
+    }
+
+    .preview-header strong { font-size: 0.86rem; }
+    .preview-header span { color: var(--app-sub); font-size: 0.78rem; }
+
+    iframe {
+      display: block;
+      width: 100%;
+      min-height: 760px;
+      border: 0;
+      background: #FFF;
+    }
+
+    @media (max-width: 740px) {
+      .app-shell { width: min(100% - 20px, 1180px); margin-top: 16px; }
+      .control-panel { grid-template-columns: 1fr; padding: 18px; }
+      .button-row { justify-content: flex-start; }
+      .preview-header { align-items: flex-start; flex-direction: column; gap: 2px; }
+      iframe { min-height: 680px; }
+    }
+  </style>
+
+  <!--
+    この<style>は、生成される完成HTMLにもそのまま埋め込まれます。
+    外部フォント・外部CSS・JavaScriptを前提としない、単一HTML向けの標準テーマです。
+  -->
+  <style id="document-theme-css">
+    :root {
+      --color-primary: #1976D2;
+      --color-primary-soft: #E8F4FB;
+      --color-primary-strong: #0D5EAB;
+      --color-danger: #D84315;
+      --color-text: #222222;
+      --color-text-sub: #666666;
+      --color-text-faint: #8A8A8A;
+      --color-border: #E0E0E0;
+      --color-border-strong: #C9D3DC;
+      --color-page: #F4F6F9;
+      --color-surface: #FFFFFF;
+      --color-surface-soft: #FAFBFD;
+      --color-code-bg: #F5F7FA;
+      --shadow-sheet: 0 10px 34px rgba(22, 39, 59, 0.08);
+      --font-sans: -apple-system, BlinkMacSystemFont, "Segoe UI", "Hiragino Kaku Gothic ProN", "Hiragino Sans", "Yu Gothic UI", "Yu Gothic", Meiryo, sans-serif;
+      --font-mono: "Cascadia Code", "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace;
+      --reading-width: 820px;
+    }
+
+    * { box-sizing: border-box; }
+
+    html {
+      scroll-behavior: smooth;
+      -webkit-text-size-adjust: 100%;
+    }
+
+    body {
+      margin: 0;
+      background: var(--color-page);
+      color: var(--color-text);
+      font-family: var(--font-sans);
+      font-size: 16px;
+      line-height: 1.85;
+      text-rendering: optimizeLegibility;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    a {
+      color: var(--color-primary-strong);
+      text-decoration-color: rgba(25, 118, 210, 0.38);
+      text-underline-offset: 0.16em;
+      text-decoration-thickness: 1px;
+    }
+
+    a:hover {
+      color: var(--color-primary);
+      text-decoration-color: currentColor;
+    }
+
+    .page {
+      max-width: 980px;
+      margin: 32px auto;
+      padding: 0 20px;
+    }
+
+    .document-shell {
+      padding: 48px 52px 56px;
+      background: var(--color-surface);
+      border: 1px solid var(--color-border);
+      border-radius: 10px;
+      box-shadow: var(--shadow-sheet);
+    }
+
+    .document-header {
+      max-width: var(--reading-width);
+      margin: 0 auto 30px;
+      border-bottom: 2px solid var(--color-primary);
+      padding-bottom: 28px;
+    }
+
+    .eyebrow {
+      margin: 0 0 10px;
+      color: var(--color-primary);
+      font-size: 0.78rem;
+      font-weight: 700;
+      letter-spacing: 0.08em;
+      line-height: 1.4;
+      text-transform: uppercase;
+    }
+
+    h1, h2, h3, h4, h5, h6 {
+      color: var(--color-text);
+      font-weight: 700;
+      line-height: 1.45;
+      letter-spacing: 0.01em;
+      scroll-margin-top: 28px;
+    }
+
+    h1 {
+      margin: 0;
+      font-size: clamp(1.9rem, 4vw, 2.5rem);
+      line-height: 1.35;
+      letter-spacing: 0.02em;
+    }
+
+    .subtitle {
+      max-width: 780px;
+      margin: 12px 0 0;
+      color: var(--color-text-sub);
+      font-size: 1rem;
+      line-height: 1.75;
+    }
+
+    .document-meta {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px 24px;
+      margin-top: 20px;
+      color: var(--color-text-sub);
+      font-size: 0.82rem;
+      line-height: 1.5;
+    }
+
+    .document-meta span + span::before {
+      content: "";
+      display: inline-block;
+      width: 1px;
+      height: 0.95em;
+      margin-right: 24px;
+      vertical-align: -0.12em;
+      background: var(--color-border-strong);
+    }
+
+    .toc-panel {
+      max-width: var(--reading-width);
+      margin: 0 auto 2.4rem;
+      padding: 17px 20px 18px;
+      border: 1px solid var(--color-border);
+      border-radius: 6px;
+      background: var(--color-surface-soft);
+      color: var(--color-text-sub);
+      font-size: 0.88rem;
+      line-height: 1.6;
+    }
+
+    .toc-label {
+      margin: 0 0 9px;
+      color: var(--color-text);
+      font-size: 0.76rem;
+      font-weight: 700;
+      letter-spacing: 0.08em;
+    }
+
+    .toc-panel nav {
+      padding-left: 14px;
+      border-left: 2px solid var(--color-primary);
+    }
+
+    .toc-panel ul {
+      margin: 0;
+      padding: 0;
+      list-style: none;
+    }
+
+    .toc-panel li { margin: 5px 0; }
+
+    .toc-panel li ul {
+      margin: 5px 0 5px 14px;
+      font-size: 0.94em;
+    }
+
+    .toc-panel a {
+      display: block;
+      color: var(--color-text-sub);
+      text-decoration: none;
+    }
+
+    .toc-panel a:hover { color: var(--color-primary); }
+
+    article {
+      min-width: 0;
+      max-width: var(--reading-width);
+      margin: 0 auto;
+    }
+
+    article > :first-child { margin-top: 0; }
+    p { margin: 0 0 1.25em; }
+
+    h2 {
+      margin: 3rem 0 1rem;
+      padding: 0 0 0.54rem;
+      border-bottom: 1px solid var(--color-border);
+      font-size: 1.48rem;
+    }
+
+    h2::before {
+      content: "";
+      display: inline-block;
+      width: 4px;
+      height: 1.05em;
+      margin: 0 10px 0 0;
+      vertical-align: -0.11em;
+      border-radius: 2px;
+      background: var(--color-primary);
+    }
+
+    h3 { margin: 2rem 0 0.72rem; font-size: 1.16rem; }
+    h4 { margin: 1.55rem 0 0.6rem; color: #353535; font-size: 1rem; }
+    h5, h6 { margin: 1.3rem 0 0.5rem; color: var(--color-text-sub); font-size: 0.92rem; }
+
+    strong { font-weight: 700; }
+    em { font-style: italic; }
+    del { color: var(--color-text-faint); text-decoration-color: rgba(216, 67, 21, 0.65); text-decoration-thickness: 1.5px; }
+
+    code {
+      padding: 0.14em 0.38em;
+      border: 1px solid #E7ECF0;
+      border-radius: 4px;
+      background: var(--color-code-bg);
+      color: #394A59;
+      font-family: var(--font-mono);
+      font-size: 0.86em;
+      line-height: 1.3;
+      overflow-wrap: anywhere;
+    }
+
+    pre {
+      overflow-x: auto;
+      margin: 1.25rem 0 1.5rem;
+      padding: 18px 20px;
+      border: 1px solid #E2E9EF;
+      border-radius: 6px;
+      background: #F7F9FB;
+      box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.8);
+      line-height: 1.65;
+    }
+
+    pre code {
+      display: block;
+      min-width: max-content;
+      padding: 0;
+      border: 0;
+      border-radius: 0;
+      background: transparent;
+      color: #2B3A46;
+      font-size: 0.84rem;
+      overflow-wrap: normal;
+    }
+
+    blockquote {
+      margin: 1.45rem 0;
+      padding: 0.4rem 0 0.4rem 1.1rem;
+      border-left: 3px solid var(--color-border-strong);
+      color: #4C5964;
+    }
+
+    blockquote p:last-child { margin-bottom: 0; }
+
+    .callout {
+      margin: 1.45rem 0;
+      padding: 16px 18px;
+      border: 1px solid var(--color-border);
+      border-left: 4px solid var(--color-primary);
+      border-radius: 0 6px 6px 0;
+      background: var(--color-primary-soft);
+    }
+
+    .callout-title {
+      margin: 0 0 6px;
+      color: var(--color-primary-strong);
+      font-size: 0.78rem;
+      font-weight: 700;
+      letter-spacing: 0.05em;
+    }
+
+    .callout.warning { border-left-color: var(--color-danger); background: #FFF7F4; }
+    .callout.warning .callout-title { color: var(--color-danger); }
+    .callout p:last-child { margin-bottom: 0; }
+
+    hr { height: 1px; margin: 2.5rem 0; border: 0; background: var(--color-border); }
+
+    ul, ol { margin: 0 0 1.35rem; padding-left: 1.5em; }
+    li { margin: 0.38em 0; }
+    li > ul, li > ol { margin: 0.38em 0 0.5em; }
+    ul ::marker { color: var(--color-primary); }
+    ol ::marker { color: var(--color-primary-strong); font-weight: 700; }
+
+    .task-list { padding-left: 0; list-style: none; }
+    .task-list li { position: relative; padding-left: 1.8em; }
+    .task-list input[type="checkbox"] {
+      position: absolute;
+      left: 0;
+      top: 0.43em;
+      width: 1em;
+      height: 1em;
+      margin: 0;
+      accent-color: var(--color-primary);
+    }
+
+    .table-scroll {
+      overflow-x: auto;
+      margin: 1.35rem 0 1.6rem;
+      border: 1px solid var(--color-border);
+      border-radius: 6px;
+      background: #FFF;
+    }
+
+    table { width: 100%; min-width: 580px; border-collapse: collapse; font-size: 0.92rem; line-height: 1.65; }
+    th, td { padding: 0.76rem 0.88rem; border-bottom: 1px solid var(--color-border); text-align: left; vertical-align: top; }
+    th { color: #3A4650; background: var(--color-surface-soft); font-weight: 700; white-space: nowrap; }
+    tr:last-child td { border-bottom: 0; }
+
+    figure { margin: 1.65rem 0; }
+    figure img { display: block; max-width: 100%; height: auto; border: 1px solid var(--color-border); border-radius: 6px; background: var(--color-surface-soft); }
+    figcaption { margin-top: 0.55rem; color: var(--color-text-sub); font-size: 0.82rem; line-height: 1.6; }
+
+    .footnotes {
+      margin-top: 2.7rem;
+      padding-top: 1.15rem;
+      border-top: 1px solid var(--color-border);
+      color: var(--color-text-sub);
+      font-size: 0.82rem;
+      line-height: 1.65;
+    }
+
+    .footnotes ol { margin-bottom: 0; }
+    .footnote-ref { font-size: 0.75em; line-height: 0; vertical-align: super; }
+
+    .document-footer {
+      display: flex;
+      max-width: var(--reading-width);
+      margin: 40px auto 0;
+      flex-wrap: wrap;
+      justify-content: space-between;
+      gap: 8px 24px;
+      padding-top: 16px;
+      border-top: 1px solid var(--color-border);
+      color: var(--color-text-faint);
+      font-size: 0.75rem;
+      line-height: 1.55;
+    }
+
+    @media (max-width: 860px) {
+      .page { margin: 0; padding: 0; }
+      .document-shell { padding: 32px 26px 38px; border: 0; border-radius: 0; box-shadow: none; }
+      .document-header { margin-bottom: 24px; }
+      .toc-panel { margin-bottom: 2rem; padding: 16px 18px; }
+    }
+
+    @media (max-width: 480px) {
+      body { font-size: 15.5px; }
+      .document-shell { padding: 27px 18px 32px; }
+      h1 { font-size: 1.78rem; }
+      h2 { font-size: 1.34rem; }
+      h3 { font-size: 1.1rem; }
+      .document-meta span + span::before { display: none; }
+      .document-meta { display: grid; gap: 4px; }
+      pre { margin-left: -2px; margin-right: -2px; padding: 15px 16px; }
+    }
+
+    @media print {
+      @page { margin: 16mm 14mm 18mm; }
+      body { background: #FFF; font-size: 10.5pt; line-height: 1.7; }
+      .page { max-width: none; margin: 0; padding: 0; }
+      .document-shell { padding: 0; border: 0; border-radius: 0; box-shadow: none; }
+      .toc-panel { margin-bottom: 20px; border-color: #D8D8D8; background: #FFF; }
+      .document-header { margin-bottom: 22px; }
+      a { color: inherit; text-decoration: none; }
+      h2, h3, h4 { break-after: avoid; }
+      pre, blockquote, .callout, figure, .table-scroll { break-inside: avoid; }
+      .table-scroll { overflow: visible; }
+      table { min-width: 0; }
+      .document-footer { margin-top: 28px; }
+    }
+  </style>
+</head>
+<body>
+  <main class="app-shell">
+    <header class="app-header">
+      <h1>Markdown ローカルHTMLビューア</h1>
+      <p>Markdownをブラウザ内だけでHTMLへ変換し、標準ドキュメントテーマを当てた単一HTMLとして確認・保存します。</p>
+    </header>
+
+    <section class="control-panel" aria-label="Markdownファイルを選択">
+      <div class="file-area">
+        <label class="field-label" for="markdown-file">MARKDOWN FILE</label>
+        <input id="markdown-file" type="file" accept=".md,.markdown,.mdown,.mkdn,text/markdown,text/plain">
+        <p id="file-status" class="file-status">Markdownファイルを選択してください。</p>
+      </div>
+
+      <div class="control-options">
+        <label class="checkbox-control" title="見出し2・見出し3から、タイトル直下の目次を生成します。">
+          <input id="include-toc" type="checkbox">
+          <span>目次を含める</span>
+        </label>
+        <div class="button-row">
+          <button id="show-sample" class="secondary" type="button">サンプルを表示</button>
+          <button id="open-document" type="button" disabled>別タブで開く</button>
+          <button id="download-document" type="button" disabled>HTMLとして保存</button>
+        </div>
+      </div>
+    </section>
+
+    <p class="local-note">ファイルはブラウザ内のJavaScriptで読み取るだけで、どこにもアップロードしません。HTML内の生タグは無効化します。画像は外部URL・data URI・出力HTMLと同じ場所に置いた相対パスを利用できます。</p>
+
+    <section class="preview-panel" aria-label="プレビュー">
+      <div class="preview-header">
+        <strong>プレビュー</strong>
+        <span id="preview-name">まだMarkdownを読み込んでいません</span>
+      </div>
+      <iframe id="preview-frame" title="Markdown変換プレビュー"></iframe>
+    </section>
+  </main>
+
+  <script>
+    (() => {
+      "use strict";
+
+      const documentCss = document.getElementById("document-theme-css").textContent;
+      const fileInput = document.getElementById("markdown-file");
+      const tocCheckbox = document.getElementById("include-toc");
+      const fileStatus = document.getElementById("file-status");
+      const previewName = document.getElementById("preview-name");
+      const previewFrame = document.getElementById("preview-frame");
+      const showSampleButton = document.getElementById("show-sample");
+      const openButton = document.getElementById("open-document");
+      const downloadButton = document.getElementById("download-document");
+
+      const state = {
+        markdown: "",
+        sourceName: "document.md",
+        outputHtml: ""
+      };
+
+      const sampleMarkdown = `---
+title: Markdownを人に渡すためのHTML文書
+subtitle: ローカル完結のMarkdownビューアによる出力サンプル
+type: デザイン確認用サンプル
+date: 2026年7月2日
+updated: 2026年7月2日
+---
+
+# Markdownを人に渡すためのHTML文書
+
+このHTMLは、ローカルのMarkdownファイルを選択して、ブラウザ内だけで変換・保存するための見本です。**見出し、段落、リスト、引用、表、コード**といった通常のMarkdown要素を、読みやすい文書として整えます。
+
+## 方針
+
+HTMLの見た目は、派手なカードUIではなく、余白・見出し・罫線・文字の強弱によって情報の階層を伝えることを優先します。
+
+> [!NOTE]
+> 目次は必須ではありません。必要なときだけ、画面上の「目次を含める」をオンにして出力します。
+
+## 箇条書き
+
+- 1カラムで上から下へ読める構成にする
+- PCとスマートフォンの両方で自然に読めるようにする
+  - ネストした箇条書きも扱う
+  - タスク項目も扱う
+- 完成したHTMLは単一ファイルとして保存する
+
+1. Markdownファイルを選択する
+2. プレビューを確認する
+3. 別タブで開く、またはHTMLとして保存する
+
+- [x] ローカルで読み取る
+- [x] CSSを完成HTMLへ埋め込む
+- [ ] 画像をdata URIへ自動変換する
+
+## 表
+
+| 項目 | 内容 | 補足 |
+| --- | --- | --- |
+| 入力 | ローカルのMarkdown | ブラウザ内で読み取る |
+| 出力 | 自己完結型HTML | CSSを内包する |
+| 目次 | 任意 | 見出し2・3から生成 |
+
+## 引用とコード
+
+> 文書の見た目は内容の代わりではないが、読み手が内容を理解するまでの摩擦は減らせる。
+
+\`inline code\` は本文中で区別されます。コードブロックもそのまま表示できます。
+
+\`\`\`js
+const filename = "report.html";
+console.log(filename);
+\`\`\`
+
+## 脚注
+
+脚注のような補足も扱えます。[^note]
+
+[^note]: この簡易ビューアは、一般的なMarkdown要素を対象にしています。Pandoc固有の拡張記法や複雑なHTMLは対象外です。`;
+
+      function escapeHtml(value) {
+        return String(value)
+          .replace(/&/g, "&amp;")
+          .replace(/</g, "&lt;")
+          .replace(/>/g, "&gt;")
+          .replace(/\"/g, "&quot;")
+          .replace(/'/g, "&#39;");
+      }
+
+      function escapeAttribute(value) {
+        return escapeHtml(value).replace(/`/g, "&#96;");
+      }
+
+      function slugify(value, usedIds) {
+        const base = String(value)
+          .toLowerCase()
+          .trim()
+          .replace(/<[^>]*>/g, "")
+          .replace(/[^\p{L}\p{N}\-_\s]/gu, "")
+          .replace(/\s+/g, "-")
+          .replace(/-+/g, "-")
+          .replace(/^-|-$/g, "") || "section";
+
+        let id = base;
+        let number = 2;
+        while (usedIds.has(id)) {
+          id = `${base}-${number}`;
+          number += 1;
+        }
+        usedIds.add(id);
+        return id;
+      }
+
+      function safeUrl(url, allowDataImage = false) {
+        const value = String(url || "").trim();
+        if (!value) return "";
+        if (allowDataImage && /^data:image\/[a-z0-9.+-]+;base64,/i.test(value)) return value;
+        if (/^(https?:|mailto:|tel:|#)/i.test(value)) return value;
+        if (!/^[a-z][a-z0-9+.-]*:/i.test(value)) return value;
+        return "";
+      }
+
+      function splitPipeRow(line) {
+        let value = line.trim();
+        if (value.startsWith("|")) value = value.slice(1);
+        if (value.endsWith("|")) value = value.slice(0, -1);
+        return value.split(/(?<!\\)\|/).map(cell => cell.trim().replace(/\\\|/g, "|"));
+      }
+
+      function isTableSeparator(line) {
+        const cells = splitPipeRow(line);
+        return cells.length > 0 && cells.every(cell => /^:?-{3,}:?$/.test(cell));
+      }
+
+      function parseFrontMatter(text) {
+        const normalized = text.replace(/^\uFEFF/, "").replace(/\r\n?/g, "\n");
+        if (!normalized.startsWith("---\n")) {
+          return { meta: {}, body: normalized };
+        }
+        const closeIndex = normalized.indexOf("\n---\n", 4);
+        if (closeIndex === -1) {
+          return { meta: {}, body: normalized };
+        }
+
+        const rawMeta = normalized.slice(4, closeIndex);
+        const meta = {};
+        rawMeta.split("\n").forEach(line => {
+          const match = line.match(/^([A-Za-z0-9_\-\u3040-\u30ff\u3400-\u9fff]+)\s*:\s*(.*)$/);
+          if (!match) return;
+          const key = match[1].toLowerCase();
+          let value = match[2].trim();
+          if ((value.startsWith('"') && value.endsWith('"')) || (value.startsWith("'") && value.endsWith("'"))) {
+            value = value.slice(1, -1);
+          }
+          meta[key] = value;
+        });
+
+        return { meta, body: normalized.slice(closeIndex + 5) };
+      }
+
+      function extractFootnoteDefinitions(lines) {
+        const definitions = new Map();
+        const bodyLines = [];
+
+        for (let index = 0; index < lines.length; index += 1) {
+          const match = lines[index].match(/^\[\^([^\]]+)\]:\s*(.*)$/);
+          if (!match) {
+            bodyLines.push(lines[index]);
+            continue;
+          }
+
+          const id = match[1].trim();
+          const definitionLines = [match[2]];
+          let next = index + 1;
+          while (next < lines.length && /^( {2,}|\t)/.test(lines[next])) {
+            definitionLines.push(lines[next].replace(/^( {2,}|\t)/, ""));
+            next += 1;
+          }
+          definitions.set(id, definitionLines.join("\n").trim());
+          index = next - 1;
+        }
+
+        return { bodyLines, definitions };
+      }
+
+      function renderInlineFactory(footnotes) {
+        const refOrder = [];
+
+        function renderInline(source) {
+          const tokens = [];
+          const stash = html => {
+            const token = `@@MDTOKEN${tokens.length}@@`;
+            tokens.push(html);
+            return token;
+          };
+
+          let text = String(source || "");
+
+          text = text.replace(/`([^`\n]+)`/g, (_, code) => stash(`<code>${escapeHtml(code)}</code>`));
+
+          text = text.replace(/!\[([^\]]*)\]\(([^\s)]+)(?:\s+["']([^"']*)["'])?\)/g, (_, alt, rawUrl, title) => {
+            const url = safeUrl(rawUrl, true);
+            if (!url) return escapeHtml(`![${alt}](${rawUrl})`);
+            const titleAttribute = title ? ` title="${escapeAttribute(title)}"` : "";
+            return stash(`<img src="${escapeAttribute(url)}" alt="${escapeAttribute(alt)}"${titleAttribute}>`);
+          });
+
+          text = text.replace(/\[([^\]]+)\]\(([^\s)]+)(?:\s+["']([^"']*)["'])?\)/g, (_, label, rawUrl, title) => {
+            const url = safeUrl(rawUrl, false);
+            if (!url) return escapeHtml(`[${label}](${rawUrl})`);
+            const titleAttribute = title ? ` title="${escapeAttribute(title)}"` : "";
+            const external = /^(https?:|mailto:|tel:)/i.test(url) ? ' target="_blank" rel="noopener noreferrer"' : "";
+            return stash(`<a href="${escapeAttribute(url)}"${titleAttribute}${external}>${escapeHtml(label)}</a>`);
+          });
+
+          text = text.replace(/\[\^([^\]]+)\]/g, (_, id) => {
+            const normalizedId = id.trim();
+            if (!footnotes.has(normalizedId)) return escapeHtml(`[^${id}]`);
+            if (!refOrder.includes(normalizedId)) refOrder.push(normalizedId);
+            const position = refOrder.indexOf(normalizedId) + 1;
+            return stash(`<sup class="footnote-ref"><a href="#fn-${escapeAttribute(normalizedId)}" id="fnref-${escapeAttribute(normalizedId)}">${position}</a></sup>`);
+          });
+
+          text = escapeHtml(text);
+          text = text
+            .replace(/~~(.+?)~~/g, "<del>$1</del>")
+            .replace(/\*\*(.+?)\*\*/g, "<strong>$1</strong>")
+            .replace(/__(.+?)__/g, "<strong>$1</strong>")
+            .replace(/(^|[^*])\*([^*\n]+)\*(?!\*)/g, "$1<em>$2</em>")
+            .replace(/(^|[^_\p{L}\p{N}])_([^_\n]+)_(?![\p{L}\p{N}])/gu, "$1<em>$2</em>")
+            .replace(/ {2,}\n/g, "<br>\n")
+            .replace(/\n/g, " ");
+
+          tokens.forEach((html, index) => {
+            text = text.replace(`@@MDTOKEN${index}@@`, html);
+          });
+          return text;
+        }
+
+        return { renderInline, refOrder };
+      }
+
+      function isHeading(line) {
+        return /^(#{1,6})\s+(.+?)\s*#*\s*$/.test(line);
+      }
+
+      function isHorizontalRule(line) {
+        return /^(?:\*\s*){3,}$/.test(line.trim()) || /^(?:-\s*){3,}$/.test(line.trim()) || /^(?:_\s*){3,}$/.test(line.trim());
+      }
+
+      function listMatch(line) {
+        return line.match(/^( *)([-+*]|\d+[.)])\s+(.*)$/);
+      }
+
+      function isSpecialStart(lines, index) {
+        const line = lines[index] || "";
+        if (!line.trim()) return true;
+        if (/^(```+|~~~+)/.test(line)) return true;
+        if (isHeading(line) || isHorizontalRule(line) || /^> ?/.test(line)) return true;
+        if (listMatch(line)) return true;
+        if (index + 1 < lines.length && line.includes("|") && isTableSeparator(lines[index + 1])) return true;
+        return false;
+      }
+
+      function renderMarkdown(markdown, sourceName) {
+        const { meta, body } = parseFrontMatter(markdown);
+        const { bodyLines, definitions } = extractFootnoteDefinitions(body.split("\n"));
+        const { renderInline, refOrder } = renderInlineFactory(definitions);
+        const usedIds = new Set();
+        const headings = [];
+        let firstH1 = "";
+        let h1Consumed = false;
+
+        function renderList(lines, startIndex, baseIndent) {
+          const first = listMatch(lines[startIndex]);
+          if (!first) return { html: "", nextIndex: startIndex };
+          const ordered = /^\d+[.)]$/.test(first[2]);
+          const startNumber = ordered ? Number.parseInt(first[2], 10) : null;
+          let html = ordered ? `<ol${startNumber !== 1 ? ` start="${startNumber}"` : ""}>` : "<ul>";
+          let index = startIndex;
+          let hasTask = false;
+
+          while (index < lines.length) {
+            const current = listMatch(lines[index]);
+            if (!current || current[1].length !== baseIndent || (/^\d+[.)]$/.test(current[2])) !== ordered) break;
+
+            let itemText = current[3];
+            index += 1;
+            const childLines = [];
+
+            while (index < lines.length) {
+              const nextLine = lines[index];
+              const nextMatch = listMatch(nextLine);
+              if (nextMatch && nextMatch[1].length === baseIndent && (/^\d+[.)]$/.test(nextMatch[2])) === ordered) break;
+              if (nextMatch && nextMatch[1].length < baseIndent) break;
+              if (!nextLine.trim()) {
+                childLines.push("");
+                index += 1;
+                continue;
+              }
+              const minIndent = Math.min(nextLine.match(/^ */)[0].length, baseIndent + 2);
+              if (minIndent <= baseIndent && !nextMatch) break;
+              childLines.push(nextLine.slice(Math.min(baseIndent + 2, nextLine.length)));
+              index += 1;
+            }
+
+            let itemHtml = "";
+            const task = itemText.match(/^\[([ xX])\]\s+(.*)$/);
+            if (task) {
+              hasTask = true;
+              const checked = task[1].toLowerCase() === "x" ? " checked" : "";
+              itemHtml += `<input type="checkbox" disabled${checked}> ${renderInline(task[2])}`;
+            } else {
+              itemHtml += renderInline(itemText);
+            }
+
+            if (childLines.some(line => line.trim())) {
+              const nestedHtml = renderBlocks(childLines).trim();
+              itemHtml += nestedHtml;
+            }
+            html += `<li>${itemHtml}</li>`;
+          }
+
+          html += ordered ? "</ol>" : "</ul>";
+          if (hasTask) html = html.replace(ordered ? "<ol" : "<ul", ordered ? '<ol class="task-list"' : '<ul class="task-list"');
+          return { html, nextIndex: index };
+        }
+
+        function renderBlocks(lines) {
+          let html = "";
+          let index = 0;
+
+          while (index < lines.length) {
+            const line = lines[index];
+            if (!line.trim()) {
+              index += 1;
+              continue;
+            }
+
+            const fence = line.match(/^(```+|~~~+)\s*([^\s]*)\s*$/);
+            if (fence) {
+              const marker = fence[1];
+              const language = fence[2].replace(/[^A-Za-z0-9_+.-]/g, "");
+              const codeLines = [];
+              index += 1;
+              while (index < lines.length && !lines[index].startsWith(marker)) {
+                codeLines.push(lines[index]);
+                index += 1;
+              }
+              if (index < lines.length) index += 1;
+              const languageClass = language ? ` class="language-${escapeAttribute(language)}"` : "";
+              html += `<pre><code${languageClass}>${escapeHtml(codeLines.join("\n"))}</code></pre>`;
+              continue;
+            }
+
+            const heading = line.match(/^(#{1,6})\s+(.+?)\s*#*\s*$/);
+            if (heading) {
+              const level = heading[1].length;
+              const text = heading[2].trim();
+              const plainText = text.replace(/[*_`~\[\]]/g, "").trim();
+
+              if (level === 1 && !h1Consumed) {
+                firstH1 = plainText;
+                h1Consumed = true;
+                index += 1;
+                continue;
+              }
+
+              const id = slugify(plainText, usedIds);
+              headings.push({ level, text: plainText, id });
+              html += `<h${level} id="${escapeAttribute(id)}">${renderInline(text)}</h${level}>`;
+              index += 1;
+              continue;
+            }
+
+            if (isHorizontalRule(line)) {
+              html += "<hr>";
+              index += 1;
+              continue;
+            }
+
+            if (/^> ?/.test(line)) {
+              const quoteLines = [];
+              while (index < lines.length && (/^> ?/.test(lines[index]) || !lines[index].trim())) {
+                if (!lines[index].trim()) {
+                  quoteLines.push("");
+                } else {
+                  quoteLines.push(lines[index].replace(/^> ?/, ""));
+                }
+                index += 1;
+              }
+
+              const alert = quoteLines[0] && quoteLines[0].match(/^\[!(NOTE|TIP|IMPORTANT|WARNING|CAUTION)\]\s*$/i);
+              if (alert) {
+                const kind = alert[1].toUpperCase();
+                const className = /WARNING|CAUTION/.test(kind) ? "callout warning" : "callout";
+                const label = { NOTE: "NOTE", TIP: "TIP", IMPORTANT: "IMPORTANT", WARNING: "WARNING", CAUTION: "CAUTION" }[kind];
+                html += `<aside class="${className}"><p class="callout-title">${label}</p>${renderBlocks(quoteLines.slice(1))}</aside>`;
+              } else {
+                html += `<blockquote>${renderBlocks(quoteLines)}</blockquote>`;
+              }
+              continue;
+            }
+
+            if (index + 1 < lines.length && line.includes("|") && isTableSeparator(lines[index + 1])) {
+              const headers = splitPipeRow(line);
+              const alignments = splitPipeRow(lines[index + 1]).map(cell => {
+                if (/^:-+:$/.test(cell)) return "center";
+                if (/^-+:$/.test(cell)) return "right";
+                return "left";
+              });
+              index += 2;
+              const rows = [];
+              while (index < lines.length && lines[index].trim() && lines[index].includes("|")) {
+                rows.push(splitPipeRow(lines[index]));
+                index += 1;
+              }
+              const headHtml = headers.map((cell, column) => `<th style="text-align:${alignments[column] || "left"}">${renderInline(cell)}</th>`).join("");
+              const bodyHtml = rows.map(row => `<tr>${headers.map((_, column) => `<td style="text-align:${alignments[column] || "left"}">${renderInline(row[column] || "")}</td>`).join("")}</tr>`).join("");
+              html += `<div class="table-scroll"><table><thead><tr>${headHtml}</tr></thead><tbody>${bodyHtml}</tbody></table></div>`;
+              continue;
+            }
+
+            const list = listMatch(line);
+            if (list) {
+              const rendered = renderList(lines, index, list[1].length);
+              html += rendered.html;
+              index = rendered.nextIndex;
+              continue;
+            }
+
+            const imageOnly = line.match(/^!\[([^\]]*)\]\(([^\s)]+)(?:\s+["']([^"']*)["'])?\)\s*$/);
+            if (imageOnly) {
+              const url = safeUrl(imageOnly[2], true);
+              if (url) {
+                const caption = imageOnly[3] || imageOnly[1];
+                html += `<figure><img src="${escapeAttribute(url)}" alt="${escapeAttribute(imageOnly[1])}">${caption ? `<figcaption>${escapeHtml(caption)}</figcaption>` : ""}</figure>`;
+                index += 1;
+                continue;
+              }
+            }
+
+            const paragraphLines = [line];
+            index += 1;
+            while (index < lines.length && !isSpecialStart(lines, index)) {
+              paragraphLines.push(lines[index]);
+              index += 1;
+            }
+            html += `<p>${renderInline(paragraphLines.join("\n"))}</p>`;
+          }
+          return html;
+        }
+
+        const contentHtml = renderBlocks(bodyLines);
+        const title = meta.title || firstH1 || sourceName.replace(/\.[^.]+$/, "") || "無題の文書";
+        const subtitle = meta.subtitle || "";
+        const metaItems = [];
+        const typeLabel = meta.type || meta["document-type"] || meta["文書種別"] || "";
+        const date = meta.date || meta.created || meta["作成日"] || "";
+        const updated = meta.updated || meta.modified || meta["更新日"] || "";
+        const author = meta.author || meta["著者"] || "";
+        if (date) metaItems.push(`作成日：${date}`);
+        if (updated) metaItems.push(`更新日：${updated}`);
+        if (author) metaItems.push(`作成者：${author}`);
+
+        const footnotesHtml = refOrder.length
+          ? `<section class="footnotes" aria-label="脚注"><ol>${refOrder.map((id, index) => {
+              const definition = definitions.get(id) || "";
+              return `<li id="fn-${escapeAttribute(id)}">${renderInline(definition)} <a href="#fnref-${escapeAttribute(id)}" aria-label="本文へ戻る">↩</a></li>`;
+            }).join("")}</ol></section>`
+          : "";
+
+        return {
+          title,
+          subtitle,
+          typeLabel,
+          metaItems,
+          headings,
+          bodyHtml: contentHtml,
+          footnotesHtml
+        };
+      }
+
+      function buildToc(headings) {
+        const visible = headings.filter(heading => heading.level >= 2 && heading.level <= 3);
+        if (!visible.length) return "";
+
+        let html = '<aside class="toc-panel" aria-label="目次"><p class="toc-label">CONTENTS</p><nav><ul>';
+        let currentLevel = 2;
+        let first = true;
+        let openItem = false;
+
+        for (const heading of visible) {
+          const targetLevel = heading.level;
+          if (!first) {
+            if (targetLevel > currentLevel) {
+              html += "<ul>";
+              currentLevel = targetLevel;
+            } else if (targetLevel < currentLevel) {
+              while (targetLevel < currentLevel) {
+                html += "</li></ul>";
+                currentLevel -= 1;
+              }
+              html += "</li>";
+              openItem = false;
+            } else {
+              html += "</li>";
+              openItem = false;
+            }
+          }
+          html += `<li><a href="#${escapeAttribute(heading.id)}">${escapeHtml(heading.text)}</a>`;
+          openItem = true;
+          first = false;
+        }
+        while (currentLevel > 2) {
+          html += "</li></ul>";
+          currentLevel -= 1;
+          openItem = false;
+        }
+        if (openItem) html += "</li>";
+        html += "</ul></nav></aside>";
+        return html;
+      }
+
+      function buildFullDocument(markdown, sourceName, includeToc) {
+        const rendered = renderMarkdown(markdown, sourceName);
+        const toc = includeToc ? buildToc(rendered.headings) : "";
+        const metadata = rendered.metaItems.length
+          ? `<div class="document-meta" aria-label="文書情報">${rendered.metaItems.map(item => `<span>${escapeHtml(item)}</span>`).join("")}</div>`
+          : "";
+        const eyebrow = rendered.typeLabel ? `<p class="eyebrow">${escapeHtml(rendered.typeLabel)}</p>` : "";
+
+        const footer = `<footer class="document-footer"><span>Markdownからローカルで生成したHTML</span><span>元ファイル：${escapeHtml(sourceName)}</span></footer>`;
+        const csp = "default-src 'none'; img-src 'self' data: https: http:; style-src 'unsafe-inline'; base-uri 'none'; form-action 'none'";
+        return `<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="color-scheme" content="light">
+  <meta http-equiv="Content-Security-Policy" content="${csp}">
+  <title>${escapeHtml(rendered.title)}</title>
+  <style>${documentCss}</style>
+</head>
+<body>
+  <div class="page">
+    <div class="document-shell">
+      <header class="document-header">
+        ${eyebrow}
+        <h1>${escapeHtml(rendered.title)}</h1>
+        ${rendered.subtitle ? `<p class="subtitle">${escapeHtml(rendered.subtitle)}</p>` : ""}
+        ${metadata}
+      </header>
+      ${toc}
+      <article>
+        ${rendered.bodyHtml}
+        ${rendered.footnotesHtml}
+      </article>
+      ${footer}
+    </div>
+  </div>
+</body>
+</html>`;
+      }
+
+      function sanitizeFilename(value) {
+        const cleaned = String(value || "document")
+          .replace(/\.[^.]+$/, "")
+          .replace(/[\\/:*?"<>|\x00-\x1F]/g, "-")
+          .replace(/\s+/g, "-")
+          .replace(/-+/g, "-")
+          .replace(/^-|-$/g, "");
+        return cleaned || "document";
+      }
+
+      function renderCurrentDocument() {
+        if (!state.markdown) return;
+        state.outputHtml = buildFullDocument(state.markdown, state.sourceName, tocCheckbox.checked);
+        previewFrame.srcdoc = state.outputHtml;
+        previewName.textContent = `${state.sourceName}${tocCheckbox.checked ? " ／ 目次あり" : " ／ 目次なし"}`;
+        openButton.disabled = false;
+        downloadButton.disabled = false;
+      }
+
+      function setMarkdown(markdown, sourceName, message) {
+        state.markdown = markdown;
+        state.sourceName = sourceName || "document.md";
+        fileStatus.textContent = message || `${state.sourceName} を読み込みました。`;
+        renderCurrentDocument();
+      }
+
+      fileInput.addEventListener("change", () => {
+        const file = fileInput.files && fileInput.files[0];
+        if (!file) return;
+        const reader = new FileReader();
+        fileStatus.textContent = `${file.name} を読み込んでいます…`;
+        reader.onload = () => {
+          setMarkdown(String(reader.result || ""), file.name, `${file.name} をブラウザ内で読み込みました（${file.size.toLocaleString()} bytes）。`);
+        };
+        reader.onerror = () => {
+          fileStatus.textContent = `${file.name} を読み込めませんでした。UTF-8のテキストファイルか確認してください。`;
+        };
+        reader.readAsText(file, "UTF-8");
+      });
+
+      tocCheckbox.addEventListener("change", renderCurrentDocument);
+
+      showSampleButton.addEventListener("click", () => {
+        fileInput.value = "";
+        setMarkdown(sampleMarkdown, "sample.md", "内蔵サンプルを表示しています。実際のMarkdownファイルを選ぶと差し替わります。");
+      });
+
+      openButton.addEventListener("click", () => {
+        if (!state.outputHtml) return;
+        const popup = window.open("", "_blank");
+        if (!popup) {
+          fileStatus.textContent = "別タブを開けませんでした。ブラウザのポップアップブロックを解除するか、「HTMLとして保存」を使ってください。";
+          return;
+        }
+        popup.document.open();
+        popup.document.write(state.outputHtml);
+        popup.document.close();
+      });
+
+      downloadButton.addEventListener("click", () => {
+        if (!state.outputHtml) return;
+        const rendered = renderMarkdown(state.markdown, state.sourceName);
+        const filename = `${sanitizeFilename(rendered.title || state.sourceName)}.html`;
+        const blob = new Blob([state.outputHtml], { type: "text/html;charset=utf-8" });
+        const url = URL.createObjectURL(blob);
+        const anchor = document.createElement("a");
+        anchor.href = url;
+        anchor.download = filename;
+        document.body.appendChild(anchor);
+        anchor.click();
+        anchor.remove();
+        URL.revokeObjectURL(url);
+        fileStatus.textContent = `${filename} を保存しました。`;
+      });
+    })();
+  </script>
+</body>
+</html>
