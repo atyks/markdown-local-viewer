@@ -1,0 +1,6 @@
+# config.js is not registered to git
+config.js
+
+# Ignore all files in local/ directory except .gitkeep
+local/*
+!local/.gitkeep

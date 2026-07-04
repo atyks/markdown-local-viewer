@@ -4,18 +4,21 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta name="color-scheme" content="light">
-  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'unsafe-inline'; script-src 'unsafe-inline'; img-src data: https: http:; base-uri 'none'; form-action 'none'">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'unsafe-inline'; script-src 'self' 'unsafe-inline'; img-src 'self' data: https: http:; base-uri 'none'; form-action 'none'">
   <title>Markdown ローカルHTMLビューア</title>
+  <script src="config.js"></script>
   <style>
     :root {
-      --app-blue: #1976D2;
-      --app-blue-strong: #0D5EAB;
-      --app-text: #222222;
-      --app-sub: #666666;
-      --app-border: #E0E0E0;
-      --app-page: #F4F6F9;
+      --app-blue: #1E3A8A;
+      --app-blue-strong: #1D4ED8;
+      --app-accent: #F97316;
+      --app-accent-strong: #EA580C;
+      --app-text: #1F2937;
+      --app-sub: #4B5563;
+      --app-border: #E5E7EB;
+      --app-page: #F3F4F6;
       --app-surface: #FFFFFF;
-      --app-soft: #FAFBFD;
+      --app-soft: #F9FAFB;
       --app-shadow: 0 8px 28px rgba(22, 39, 59, 0.08);
       --app-font: -apple-system, BlinkMacSystemFont, "Segoe UI", "Hiragino Kaku Gothic ProN", "Hiragino Sans", "Yu Gothic UI", "Yu Gothic", Meiryo, sans-serif;
     }
@@ -45,6 +48,7 @@
       font-size: 1.38rem;
       line-height: 1.4;
       letter-spacing: 0.01em;
+      color: var(--app-blue);
     }
 
     .app-header p {
@@ -118,7 +122,7 @@
       width: 1em;
       height: 1em;
       margin: 0;
-      accent-color: var(--app-blue);
+      accent-color: var(--app-accent);
     }
 
     .button-row {
@@ -145,6 +149,8 @@
     button:hover { background: var(--app-blue-strong); border-color: var(--app-blue-strong); }
     button.secondary { background: #FFF; color: var(--app-blue-strong); }
     button.secondary:hover { background: #F4F8FC; }
+    button.accent { background: var(--app-accent); border-color: var(--app-accent); }
+    button.accent:hover { background: var(--app-accent-strong); border-color: var(--app-accent-strong); }
     button:disabled { cursor: not-allowed; opacity: 0.46; }
 
     .local-note {
@@ -198,19 +204,20 @@
   -->
   <style id="document-theme-css">
     :root {
-      --color-primary: #1976D2;
-      --color-primary-soft: #E8F4FB;
-      --color-primary-strong: #0D5EAB;
-      --color-danger: #D84315;
-      --color-text: #222222;
-      --color-text-sub: #666666;
-      --color-text-faint: #8A8A8A;
-      --color-border: #E0E0E0;
-      --color-border-strong: #C9D3DC;
-      --color-page: #F4F6F9;
+      --color-primary: #2563EB;
+      --color-primary-soft: #EFF6FF;
+      --color-primary-strong: #1D4ED8;
+      --color-accent: #EA580C;
+      --color-danger: #EF4444;
+      --color-text: #1F2937;
+      --color-text-sub: #4B5563;
+      --color-text-faint: #9CA3AF;
+      --color-border: #E5E7EB;
+      --color-border-strong: #D1D5DB;
+      --color-page: #F9FAFB;
       --color-surface: #FFFFFF;
-      --color-surface-soft: #FAFBFD;
-      --color-code-bg: #F5F7FA;
+      --color-surface-soft: #F3F4F6;
+      --color-code-bg: #F3F4F6;
       --shadow-sheet: 0 10px 34px rgba(22, 39, 59, 0.08);
       --font-sans: -apple-system, BlinkMacSystemFont, "Segoe UI", "Hiragino Kaku Gothic ProN", "Hiragino Sans", "Yu Gothic UI", "Yu Gothic", Meiryo, sans-serif;
       --font-mono: "Cascadia Code", "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace;
@@ -343,7 +350,7 @@
 
     .toc-panel nav {
       padding-left: 14px;
-      border-left: 2px solid var(--color-primary);
+      border-left: 2px solid var(--color-accent);
     }
 
     .toc-panel ul {
@@ -391,7 +398,7 @@
       margin: 0 10px 0 0;
       vertical-align: -0.11em;
       border-radius: 2px;
-      background: var(--color-primary);
+      background: var(--color-accent);
     }
 
     h3 { margin: 2rem 0 0.72rem; font-size: 1.16rem; }
@@ -484,7 +491,7 @@
       width: 1em;
       height: 1em;
       margin: 0;
-      accent-color: var(--color-primary);
+      accent-color: var(--color-accent);
     }
 
     .table-scroll {
@@ -549,24 +556,51 @@
     }
 
     @media print {
-      @page { margin: 16mm 14mm 18mm; }
-      body { background: #FFF; font-size: 10.5pt; line-height: 1.7; }
+      @page { 
+        margin: 16mm 14mm 18mm;
+        @bottom-right {
+          content: counter(page) " / " counter(pages);
+          font-family: var(--font-sans);
+          font-size: 8pt;
+          color: var(--color-text-sub);
+        }
+      }
+      body { background: #FFF; font-size: 10.5pt; line-height: 1.7; color: #000; }
       .page { max-width: none; margin: 0; padding: 0; }
       .document-shell { padding: 0; border: 0; border-radius: 0; box-shadow: none; }
-      .toc-panel { margin-bottom: 20px; border-color: #D8D8D8; background: #FFF; }
-      .document-header { margin-bottom: 22px; }
+      .toc-panel { margin-bottom: 20px; border-color: #D8D8D8; background: #FFF; page-break-inside: avoid; break-inside: avoid; }
+      .document-header { margin-bottom: 22px; page-break-after: avoid; break-after: avoid; }
+      .document-logo { page-break-after: avoid; break-after: avoid; }
       a { color: inherit; text-decoration: none; }
-      h2, h3, h4 { break-after: avoid; }
-      pre, blockquote, .callout, figure, .table-scroll { break-inside: avoid; }
+      
+      /* 見出しの直後での改ページを防ぐ */
+      h1, h2, h3, h4, h5, h6 { 
+        page-break-after: avoid; 
+        break-after: avoid; 
+        page-break-inside: avoid;
+        break-inside: avoid;
+      }
+      
+      /* ブロック要素がページの途中で不自然に分割されるのを防ぐ */
+      p, pre, blockquote, .callout, figure, .table-scroll, ul, ol, dl, tr { 
+        page-break-inside: avoid; 
+        break-inside: avoid; 
+      }
+      
+      /* テーブルの改ページ制御 */
+      tr { page-break-inside: avoid; break-inside: avoid; }
+      thead { display: table-header-group; }
+      
       .table-scroll { overflow: visible; }
-      table { min-width: 0; }
-      .document-footer { margin-top: 28px; }
+      table { min-width: 0; page-break-inside: auto; break-inside: auto; }
+      .document-footer { margin-top: 28px; page-break-inside: avoid; break-inside: avoid; }
     }
   </style>
 </head>
 <body>
   <main class="app-shell">
     <header class="app-header">
+      <div id="app-logo-container" style="display: none; margin-bottom: 16px;"></div>
       <h1>Markdown ローカルHTMLビューア</h1>
       <p>Markdownをブラウザ内だけでHTMLへ変換し、標準ドキュメントテーマを当てた単一HTMLとして確認・保存します。</p>
     </header>
@@ -586,7 +620,7 @@
         <div class="button-row">
           <button id="show-sample" class="secondary" type="button">サンプルを表示</button>
           <button id="open-document" type="button" disabled>別タブで開く</button>
-          <button id="download-document" type="button" disabled>HTMLとして保存</button>
+          <button id="download-document" class="accent" type="button" disabled>HTMLとして保存</button>
         </div>
       </div>
     </section>
@@ -621,6 +655,40 @@
         sourceName: "document.md",
         outputHtml: ""
       };
+
+      // config.js の設定が存在すれば適用する
+      const config = window.markdownViewerConfig;
+
+      if (config) {
+        // 1. アプリテーマの適用
+        if (config.theme && config.theme.app) {
+          const appColors = config.theme.app;
+          const rootStyle = document.documentElement.style;
+          if (appColors.primary) rootStyle.setProperty('--app-blue', appColors.primary);
+          if (appColors.primaryHover) rootStyle.setProperty('--app-blue-strong', appColors.primaryHover);
+          if (appColors.accent) rootStyle.setProperty('--app-accent', appColors.accent);
+          if (appColors.accentHover) rootStyle.setProperty('--app-accent-strong', appColors.accentHover);
+          if (appColors.pageBg) rootStyle.setProperty('--app-page', appColors.pageBg);
+          if (appColors.surfaceBg) rootStyle.setProperty('--app-surface', appColors.surfaceBg);
+          if (appColors.text) rootStyle.setProperty('--app-text', appColors.text);
+          if (appColors.border) rootStyle.setProperty('--app-border', appColors.border);
+        }
+
+        // 2. アプリロゴの適用
+        if (config.logo && config.logo.url) {
+          const logoContainer = document.getElementById("app-logo-container");
+          if (logoContainer) {
+            const logoImg = document.createElement("img");
+            logoImg.src = config.logo.url;
+            logoImg.style.height = config.logo.height || "40px";
+            logoImg.style.maxWidth = "100%";
+            logoImg.style.objectFit = "contain";
+            logoImg.alt = config.logo.alt || "Logo";
+            logoContainer.appendChild(logoImg);
+            logoContainer.style.display = "block";
+          }
+        }
+      }
 
       const sampleMarkdown = `---
 title: Markdownを人に渡すためのHTML文書
@@ -1134,6 +1202,32 @@ console.log(filename);
           : "";
         const eyebrow = rendered.typeLabel ? `<p class="eyebrow">${escapeHtml(rendered.typeLabel)}</p>` : "";
 
+        // ロゴHTMLの生成
+        let logoHtml = "";
+        if (config && config.logo && config.logo.url) {
+          logoHtml = `<div class="document-logo" style="margin-bottom: 20px;"><img src="${escapeAttribute(config.logo.url)}" style="height: ${escapeAttribute(config.logo.height || '40px')}; max-width: 100%; object-fit: contain;" alt="${escapeAttribute(config.logo.alt || 'Logo')}"></div>`;
+        }
+
+        // カスタムドキュメントテーマ（config.js）の適用
+        let customThemeCss = "";
+        if (config && config.theme && config.theme.document) {
+          const docColors = config.theme.document;
+          customThemeCss = `\n  <style>
+    :root {
+      ${docColors.primary ? `--color-primary: ${docColors.primary};` : ""}
+      ${docColors.primarySoft ? `--color-primary-soft: ${docColors.primarySoft};` : ""}
+      ${docColors.primaryStrong ? `--color-primary-strong: ${docColors.primaryStrong};` : ""}
+      ${docColors.accent ? `--color-accent: ${docColors.accent};` : ""}
+      ${docColors.text ? `--color-text: ${docColors.text};` : ""}
+      ${docColors.textSub ? `--color-text-sub: ${docColors.textSub};` : ""}
+      ${docColors.border ? `--color-border: ${docColors.border};` : ""}
+      ${docColors.codeBg ? `--color-code-bg: ${docColors.codeBg};` : ""}
+      ${docColors.pageBg ? `--color-page: ${docColors.pageBg};` : ""}
+      ${docColors.surfaceBg ? `--color-surface: ${docColors.surfaceBg};` : ""}
+    }
+  </style>`;
+        }
+
         const footer = `<footer class="document-footer"><span>Markdownからローカルで生成したHTML</span><span>元ファイル：${escapeHtml(sourceName)}</span></footer>`;
         const csp = "default-src 'none'; img-src 'self' data: https: http:; style-src 'unsafe-inline'; base-uri 'none'; form-action 'none'";
         return `<!DOCTYPE html>
@@ -1144,12 +1238,13 @@ console.log(filename);
   <meta name="color-scheme" content="light">
   <meta http-equiv="Content-Security-Policy" content="${csp}">
   <title>${escapeHtml(rendered.title)}</title>
-  <style>${documentCss}</style>
+  <style>${documentCss}</style>${customThemeCss}
 </head>
 <body>
   <div class="page">
     <div class="document-shell">
       <header class="document-header">
+        ${logoHtml}
         ${eyebrow}
         <h1>${escapeHtml(rendered.title)}</h1>
         ${rendered.subtitle ? `<p class="subtitle">${escapeHtml(rendered.subtitle)}</p>` : ""}
