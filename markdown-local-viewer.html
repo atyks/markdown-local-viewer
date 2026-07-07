@@ -1219,7 +1219,9 @@ console.log(filename);
           metaItems,
           headings,
           bodyHtml: contentHtml,
-          footnotesHtml
+          footnotesHtml,
+          firstH1,
+          metaTitle: meta.title || ""
         };
       }
 
@@ -1480,7 +1482,23 @@ console.log(filename);
       downloadButton.addEventListener("click", () => {
         if (!state.outputHtml) return;
         const rendered = renderMarkdown(state.markdown, state.sourceName);
-        const filename = `${sanitizeFilename(rendered.title || state.sourceName)}.html`;
+        
+        let titleForFilename = "";
+        if (rendered.firstH1) {
+          titleForFilename = rendered.firstH1;
+        } else if (rendered.headings && rendered.headings.length > 0) {
+          let bestHeading = rendered.headings[0];
+          for (let i = 1; i < rendered.headings.length; i++) {
+            if (rendered.headings[i].level < bestHeading.level) {
+              bestHeading = rendered.headings[i];
+            }
+          }
+          titleForFilename = bestHeading.text;
+        } else {
+          titleForFilename = rendered.metaTitle || state.sourceName;
+        }
+
+        const filename = `${sanitizeFilename(titleForFilename)}.html`;
         const blob = new Blob([state.outputHtml], { type: "text/html;charset=utf-8" });
         const url = URL.createObjectURL(blob);
         const anchor = document.createElement("a");
@@ -1490,7 +1508,13 @@ console.log(filename);
         anchor.click();
         anchor.remove();
         URL.revokeObjectURL(url);
-        fileStatus.textContent = `${filename} を保存しました。`;
+        
+        const message = `${filename} を保存しました。`;
+        if (tabText.classList.contains("active")) {
+          textStatus.textContent = message;
+        } else {
+          fileStatus.textContent = message;
+        }
       });
 
       // ページの初期ロード時にLocalStorageからデータを復元
