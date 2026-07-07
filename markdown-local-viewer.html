@@ -1402,9 +1402,11 @@ console.log(filename);
         // テキストエリア側の状態を適用
         const text = textInput.value;
         if (text) {
+          localStorage.setItem("markdown_local_viewer_pasted_text", text);
           setMarkdown(text, "pasted.md", "直接入力されたMarkdownを読み込みました。");
         } else if (state.sourceName === "sample.md") {
           textInput.value = sampleMarkdown;
+          localStorage.setItem("markdown_local_viewer_pasted_text", sampleMarkdown);
           setMarkdown(sampleMarkdown, "pasted.md", "テキストエリアにサンプルを表示しています。");
         } else {
           state.markdown = "";
@@ -1435,8 +1437,10 @@ console.log(filename);
       textInput.addEventListener("input", () => {
         const text = textInput.value;
         if (text) {
+          localStorage.setItem("markdown_local_viewer_pasted_text", text);
           setMarkdown(text, "pasted.md", "直接入力されたMarkdownを読み込みました。");
         } else {
+          localStorage.removeItem("markdown_local_viewer_pasted_text");
           state.markdown = "";
           state.outputHtml = "";
           previewFrame.srcdoc = "";
@@ -1453,6 +1457,7 @@ console.log(filename);
         const isActiveText = tabText.classList.contains("active");
         if (isActiveText) {
           textInput.value = sampleMarkdown;
+          localStorage.setItem("markdown_local_viewer_pasted_text", sampleMarkdown);
           setMarkdown(sampleMarkdown, "pasted.md", "テキストエリアにサンプルを表示しています。");
         } else {
           fileInput.value = "";
@@ -1487,6 +1492,17 @@ console.log(filename);
         URL.revokeObjectURL(url);
         fileStatus.textContent = `${filename} を保存しました。`;
       });
+
+      // ページの初期ロード時にLocalStorageからデータを復元
+      const savedText = localStorage.getItem("markdown_local_viewer_pasted_text");
+      if (savedText) {
+        textInput.value = savedText;
+        tabText.classList.add("active");
+        tabFile.classList.remove("active");
+        fileInputContainer.style.display = "none";
+        textInputContainer.style.display = "block";
+        setMarkdown(savedText, "pasted.md", "前回の入力内容を復元しました。");
+      }
     })();
   </script>
 </body>
