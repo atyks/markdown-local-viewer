@@ -1194,27 +1194,13 @@ console.log(filename);
         }
 
         const contentHtml = renderBlocks(bodyLines);
-        // 本文中の見出しから「最も大きく、初出の見出し」を検索
-        let firstBestHeading = "";
-        if (firstH1) {
-          firstBestHeading = firstH1;
-        } else if (headings.length > 0) {
-          let bestHeading = headings[0];
-          for (let i = 1; i < headings.length; i++) {
-            if (headings[i].level < bestHeading.level) {
-              bestHeading = headings[i];
-            }
-          }
-          firstBestHeading = bestHeading.text;
-        }
-
         // 直接入力（pasted.md）のフォールバックタイトルは "pasted" とせず "無題の文書" にする
         let fallbackTitle = "無題の文書";
         if (sourceName && sourceName !== "pasted.md") {
           fallbackTitle = sourceName.replace(/\.[^.]+$/, "");
         }
 
-        const title = meta.title || firstBestHeading || fallbackTitle;
+        const title = meta.title || firstH1 || fallbackTitle;
         const subtitle = meta.subtitle || "";
         const metaItems = [];
         const typeLabel = meta.type || meta["document-type"] || meta["文書種別"] || "";
