@@ -61,13 +61,63 @@
     .control-panel {
       display: grid;
       grid-template-columns: minmax(0, 1fr) auto;
-      align-items: end;
+      align-items: start;
       gap: 18px;
       padding: 22px 24px;
       border: 1px solid var(--app-border);
       border-radius: 9px;
       background: var(--app-surface);
       box-shadow: var(--app-shadow);
+    }
+
+    .input-tabs {
+      display: flex;
+      gap: 6px;
+      margin-bottom: 16px;
+      border-bottom: 1px solid var(--app-border);
+      padding-bottom: 8px;
+    }
+
+    .input-tabs button.tab-btn {
+      min-height: auto;
+      padding: 6px 12px;
+      border: 1px solid transparent;
+      background: transparent;
+      color: var(--app-sub);
+      font-size: 0.82rem;
+      font-weight: 700;
+      border-radius: 4px;
+    }
+
+    .input-tabs button.tab-btn:hover {
+      background: var(--app-soft);
+      color: var(--app-text);
+      border-color: transparent;
+    }
+
+    .input-tabs button.tab-btn.active {
+      background: var(--app-blue);
+      color: #FFF;
+      border-color: var(--app-blue);
+    }
+
+    textarea {
+      width: 100%;
+      height: 140px;
+      padding: 9px 10px;
+      border: 1px solid var(--app-border);
+      border-radius: 5px;
+      background: var(--app-soft);
+      color: var(--app-text);
+      font-family: inherit;
+      font-size: 0.9rem;
+      resize: vertical;
+    }
+
+    textarea:focus {
+      outline: none;
+      border-color: var(--app-blue);
+      background: #FFF;
     }
 
     .file-area {
@@ -606,11 +656,24 @@
       <p>Markdownをブラウザ内だけでHTMLへ変換し、標準ドキュメントテーマを当てた単一HTMLとして確認・保存します。</p>
     </header>
 
-    <section class="control-panel" aria-label="Markdownファイルを選択">
+    <section class="control-panel" aria-label="Markdownの入力と設定">
       <div class="file-area">
-        <label class="field-label" for="markdown-file">MARKDOWN FILE</label>
-        <input id="markdown-file" type="file" accept=".md,.markdown,.mdown,.mkdn,text/markdown,text/plain">
-        <p id="file-status" class="file-status">Markdownファイルを選択してください。</p>
+        <div class="input-tabs">
+          <button type="button" id="tab-file" class="tab-btn active">ファイルを選択</button>
+          <button type="button" id="tab-text" class="tab-btn">テキストを貼り付け</button>
+        </div>
+
+        <div id="file-input-container">
+          <label class="field-label" for="markdown-file">MARKDOWN FILE</label>
+          <input id="markdown-file" type="file" accept=".md,.markdown,.mdown,.mkdn,text/markdown,text/plain">
+          <p id="file-status" class="file-status">Markdownファイルを選択してください。</p>
+        </div>
+
+        <div id="text-input-container" style="display: none;">
+          <label class="field-label" for="markdown-text">PASTE MARKDOWN</label>
+          <textarea id="markdown-text" placeholder="ここにMarkdownテキストを貼り付けてください..."></textarea>
+          <p id="text-status" class="file-status">テキストを入力すると自動でプレビューに反映されます。</p>
+        </div>
       </div>
 
       <div class="control-options">
@@ -643,6 +706,12 @@
 
       const documentCss = document.getElementById("document-theme-css").textContent;
       const fileInput = document.getElementById("markdown-file");
+      const textInput = document.getElementById("markdown-text");
+      const tabFile = document.getElementById("tab-file");
+      const tabText = document.getElementById("tab-text");
+      const fileInputContainer = document.getElementById("file-input-container");
+      const textInputContainer = document.getElementById("text-input-container");
+      const textStatus = document.getElementById("text-status");
       const tocCheckbox = document.getElementById("include-toc");
       const fileStatus = document.getElementById("file-status");
       const previewName = document.getElementById("preview-name");
@@ -1286,9 +1355,68 @@ console.log(filename);
       function setMarkdown(markdown, sourceName, message) {
         state.markdown = markdown;
         state.sourceName = sourceName || "document.md";
-        fileStatus.textContent = message || `${state.sourceName} を読み込みました。`;
+        
+        if (tabText.classList.contains("active")) {
+          textStatus.textContent = message || "テキストを入力しました。";
+        } else {
+          fileStatus.textContent = message || `${state.sourceName} を読み込みました。`;
+        }
         renderCurrentDocument();
       }
+
+      // タブ切り替えロジック
+      tabFile.addEventListener("click", () => {
+        tabFile.classList.add("active");
+        tabText.classList.remove("active");
+        fileInputContainer.style.display = "block";
+        textInputContainer.style.display = "none";
+        
+        // ファイル入力側の状態を復元
+        const file = fileInput.files && fileInput.files[0];
+        if (file) {
+          const reader = new FileReader();
+          reader.onload = () => {
+            setMarkdown(String(reader.result || ""), file.name, `${file.name} をブラウザ内で読み込みました（${file.size.toLocaleString()} bytes）。`);
+          };
+          reader.readAsText(file, "UTF-8");
+        } else if (state.sourceName === "sample.md") {
+          setMarkdown(sampleMarkdown, "sample.md", "内蔵サンプルを表示しています。");
+        } else {
+          state.markdown = "";
+          state.sourceName = "document.md";
+          state.outputHtml = "";
+          previewFrame.srcdoc = "";
+          previewName.textContent = "まだMarkdownを読み込んでいません";
+          openButton.disabled = true;
+          downloadButton.disabled = true;
+          fileStatus.textContent = "Markdownファイルを選択してください。";
+        }
+      });
+
+      tabText.addEventListener("click", () => {
+        tabText.classList.add("active");
+        tabFile.classList.remove("active");
+        fileInputContainer.style.display = "none";
+        textInputContainer.style.display = "block";
+
+        // テキストエリア側の状態を適用
+        const text = textInput.value;
+        if (text) {
+          setMarkdown(text, "pasted.md", "直接入力されたMarkdownを読み込みました。");
+        } else if (state.sourceName === "sample.md") {
+          textInput.value = sampleMarkdown;
+          setMarkdown(sampleMarkdown, "pasted.md", "テキストエリアにサンプルを表示しています。");
+        } else {
+          state.markdown = "";
+          state.sourceName = "pasted.md";
+          state.outputHtml = "";
+          previewFrame.srcdoc = "";
+          previewName.textContent = "まだMarkdownを読み込んでいません";
+          openButton.disabled = true;
+          downloadButton.disabled = true;
+          textStatus.textContent = "テキストを入力すると自動でプレビューに反映されます。";
+        }
+      });
 
       fileInput.addEventListener("change", () => {
         const file = fileInput.files && fileInput.files[0];
@@ -1304,11 +1432,32 @@ console.log(filename);
         reader.readAsText(file, "UTF-8");
       });
 
+      textInput.addEventListener("input", () => {
+        const text = textInput.value;
+        if (text) {
+          setMarkdown(text, "pasted.md", "直接入力されたMarkdownを読み込みました。");
+        } else {
+          state.markdown = "";
+          state.outputHtml = "";
+          previewFrame.srcdoc = "";
+          previewName.textContent = "まだMarkdownを読み込んでいません";
+          openButton.disabled = true;
+          downloadButton.disabled = true;
+          textStatus.textContent = "テキストを入力すると自動でプレビューに反映されます。";
+        }
+      });
+
       tocCheckbox.addEventListener("change", renderCurrentDocument);
 
       showSampleButton.addEventListener("click", () => {
-        fileInput.value = "";
-        setMarkdown(sampleMarkdown, "sample.md", "内蔵サンプルを表示しています。実際のMarkdownファイルを選ぶと差し替わります。");
+        const isActiveText = tabText.classList.contains("active");
+        if (isActiveText) {
+          textInput.value = sampleMarkdown;
+          setMarkdown(sampleMarkdown, "pasted.md", "テキストエリアにサンプルを表示しています。");
+        } else {
+          fileInput.value = "";
+          setMarkdown(sampleMarkdown, "sample.md", "内蔵サンプルを表示しています。実際のMarkdownファイルを選ぶと差し替わります。");
+        }
       });
 
       openButton.addEventListener("click", () => {
