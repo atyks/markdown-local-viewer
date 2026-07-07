@@ -1194,7 +1194,27 @@ console.log(filename);
         }
 
         const contentHtml = renderBlocks(bodyLines);
-        const title = meta.title || firstH1 || sourceName.replace(/\.[^.]+$/, "") || "無題の文書";
+        // 本文中の見出しから「最も大きく、初出の見出し」を検索
+        let firstBestHeading = "";
+        if (firstH1) {
+          firstBestHeading = firstH1;
+        } else if (headings.length > 0) {
+          let bestHeading = headings[0];
+          for (let i = 1; i < headings.length; i++) {
+            if (headings[i].level < bestHeading.level) {
+              bestHeading = headings[i];
+            }
+          }
+          firstBestHeading = bestHeading.text;
+        }
+
+        // 直接入力（pasted.md）のフォールバックタイトルは "pasted" とせず "無題の文書" にする
+        let fallbackTitle = "無題の文書";
+        if (sourceName && sourceName !== "pasted.md") {
+          fallbackTitle = sourceName.replace(/\.[^.]+$/, "");
+        }
+
+        const title = meta.title || firstBestHeading || fallbackTitle;
         const subtitle = meta.subtitle || "";
         const metaItems = [];
         const typeLabel = meta.type || meta["document-type"] || meta["文書種別"] || "";
@@ -1482,23 +1502,7 @@ console.log(filename);
       downloadButton.addEventListener("click", () => {
         if (!state.outputHtml) return;
         const rendered = renderMarkdown(state.markdown, state.sourceName);
-        
-        let titleForFilename = "";
-        if (rendered.firstH1) {
-          titleForFilename = rendered.firstH1;
-        } else if (rendered.headings && rendered.headings.length > 0) {
-          let bestHeading = rendered.headings[0];
-          for (let i = 1; i < rendered.headings.length; i++) {
-            if (rendered.headings[i].level < bestHeading.level) {
-              bestHeading = rendered.headings[i];
-            }
-          }
-          titleForFilename = bestHeading.text;
-        } else {
-          titleForFilename = rendered.metaTitle || state.sourceName;
-        }
-
-        const filename = `${sanitizeFilename(titleForFilename)}.html`;
+        const filename = `${sanitizeFilename(rendered.title)}.html`;
         const blob = new Blob([state.outputHtml], { type: "text/html;charset=utf-8" });
         const url = URL.createObjectURL(blob);
         const anchor = document.createElement("a");
