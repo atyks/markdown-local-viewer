@@ -1090,6 +1090,19 @@ console.log(filename);
         let firstH1 = "";
         let h1Consumed = false;
 
+        const toPlainText = (str) => {
+          const html = renderInline(str);
+          const stripped = html.replace(/<[^>]*>/g, "");
+          return stripped
+            .replace(/&amp;/g, "&")
+            .replace(/&lt;/g, "<")
+            .replace(/&gt;/g, ">")
+            .replace(/&quot;/g, '"')
+            .replace(/&#39;/g, "'")
+            .replace(/&#96;/g, "`")
+            .trim();
+        };
+
         function renderList(lines, startIndex, baseIndent) {
           const first = listMatch(lines[startIndex]);
           if (!first) return { html: "", nextIndex: startIndex };
@@ -1176,7 +1189,7 @@ console.log(filename);
             if (heading) {
               const level = heading[1].length;
               const text = heading[2].trim();
-              const plainText = text.replace(/[*_`~\[\]]/g, "").trim();
+              const plainText = toPlainText(text);
 
               if (level === 1 && !h1Consumed) {
                 firstH1 = plainText;
